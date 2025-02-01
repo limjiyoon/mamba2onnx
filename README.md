@@ -1,3 +1,3 @@
-# config_manager
+# Mamba2Onnx
 
 

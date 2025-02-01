@@ -1,5 +1,5 @@
 [project]
-name = "configmanagertemplate"
+name = "mamba2onnx"
 version = "0.1.0"
 description = "Add your description here"
 authors = [
@@ -26,7 +26,7 @@ dev-dependencies = [
 allow-direct-references = true
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/configmanagertemplate"]
+packages = ["src/mamba2onnx"]
 
 [tool.ruff]
 # Enable pycodestyle (`E`) and Pyflakes (`F`) codes by default.
