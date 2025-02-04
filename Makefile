@@ -1,7 +1,6 @@
 init:
 	@command -v rye >/dev/null 2>&1 || (echo "rye not installed. Installing..." && curl -sSf https://rye.astral.sh/get | bash && echo "rye is installed!")
 	rye sync
-	rye run pre-commit install
 
 format:
 	@echo "Formatting code..."

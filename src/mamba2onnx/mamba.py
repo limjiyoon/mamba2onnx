@@ -9,7 +9,8 @@ The major diffeernces are:
 - Some configurations are omitted for simplicity.
 """
 
-from dataclasses import asdict, dataclass, fields
+import math
+from dataclasses import dataclass
 
 import torch
 from torch import nn
@@ -18,7 +19,6 @@ from torch.nn import functional as F
 
 @dataclass
 class Config:
-    # For Mamba
     n_layers: int
     d_conv: int
     # For SSM
@@ -26,15 +26,14 @@ class Config:
     d_state: int  # N in paper
     d_delta: int
 
-    # For discretization
-    dt_min: float
-    dt_max: float
-    dt_init: float
-    dt_scale: float
-    dt_init_floor: float
-
     def __post_init__(self):
         self.d_inner = self.d_model * 2  # D in paper
+
+        # For discretization
+        self.dt_min: float = 0.001
+        self.dt_max: float = 0.1
+        self.dt_scale: float = 1.0
+        self.dt_init_floor: float = 1e-4
 
 
 class Mamba(nn.Module):
@@ -190,6 +189,18 @@ class SSM(nn.Module):
         # dt_proj projects delta from d_delta -> D
         self.dt_proj = nn.Linear(config.d_delta, config.d_inner, bias=True)
 
+        # delta initialization
+        dt_init_std = config.d_delta**-0.5 * config.dt_scale
+        nn.init.uniform_(self.dt_proj.weight, -dt_init_std, dt_init_std)
+        dt = torch.exp(
+            torch.rand(config.d_inner) * (math.log(config.dt_max) - math.log(config.dt_min)) + math.log(config.dt_min)
+        ).clamp(min=config.dt_init_floor)
+        inv_dt = dt + torch.log(
+            -torch.expm1(-dt)
+        )  #  inverse of softplus: https://github.com/pytorch/pytorch/issues/72759
+        with torch.no_grad():
+            self.dt_proj.bias.copy_(inv_dt)
+
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         # x: [B, L, D], z: [B, L, D] -> output: [B, L, D]
         A = -torch.exp(self.A_log)
@@ -217,7 +228,7 @@ class SSM(nn.Module):
 
         # Simplified Euler discretization instead of ZOH
         # Performance is similar to ZOH, but faster
-        discretized_B = delta.unsqueeze(-1) * B.unsqueeze(2)
+        discretized_B = delta.unsqueeze(-1) * B.unsqueeze(-2)
         return discretized_A, discretized_B
 
     def _selective_scan(
@@ -255,7 +266,7 @@ class SSM(nn.Module):
 
     def step(self, x: torch.Tensor, h: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         """Inference step."""
-        batch_size, _, _ = x.shape
+        batch_size, _ = x.shape  # [B, D]
         A = -torch.exp(self.A_log)
         D = self.D.float()
 
