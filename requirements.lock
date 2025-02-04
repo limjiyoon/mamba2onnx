@@ -10,3 +10,23 @@
 #   universal: false
 
 -e file:.
+filelock==3.17.0
+    # via torch
+fsspec==2025.2.0
+    # via torch
+jinja2==3.1.5
+    # via torch
+markupsafe==3.0.2
+    # via jinja2
+mpmath==1.3.0
+    # via sympy
+networkx==3.4.2
+    # via torch
+setuptools==75.8.0
+    # via torch
+sympy==1.13.1
+    # via torch
+torch==2.6.0
+    # via mamba2onnx
+typing-extensions==4.12.2
+    # via torch
